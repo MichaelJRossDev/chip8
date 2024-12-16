@@ -7,9 +7,9 @@ pub mod instructions {
         SkipIfEqual(u8, u8),             //3xkk
         SkipIfNotEqual(u8, u8),          //4xkk
         SkipIfRegistersEqual(u8, u8),    //5xy0
-        SetRegister(u8, u8),             //6xkk
+        Set(u8, u8),                     //6xkk
         Add(u8, u8),                     //7xkk
-        Set(u8, u8),                     //8xy0
+        CopyRegister(u8, u8),            //8xy0
         Or(u8, u8),                      //8xy1
         And(u8, u8),                     //8xy2
         Xor(u8, u8),                     //8xy3
@@ -25,7 +25,7 @@ pub mod instructions {
         Draw(u8, u8, u8),                //Dxyn
         SkipIfKeyPressed(u8),            //Ex9E
         SkipIfKeyNotPressed(u8),         //ExA1
-        SetRegisterToDelayTimer(u8),     //Fx07
+        StoreDelayTimer(u8),             //Fx07
         StoreInput(u8),                  //Fx0A
         SetDelayTimer(u8),               //Fx15
         SetSoundTimer(u8),               //Fx18
@@ -60,9 +60,9 @@ pub mod instructions {
                 (0x3, x, _, _) => Ok(Instruction::SkipIfEqual(x, kk())),
                 (0x4, x, _, _) => Ok(Instruction::SkipIfNotEqual(x, kk())),
                 (0x5, x, y, 0x0) => Ok(Instruction::SkipIfRegistersEqual(x, y)),
-                (0x6, x, _, _) => Ok(Instruction::SetRegister(x, kk())),
+                (0x6, x, _, _) => Ok(Instruction::Set(x, kk())),
                 (0x7, x, _, _) => Ok(Instruction::Add(x, kk())),
-                (0x8, x, y, 0x0) => Ok(Instruction::Set(x, y)),
+                (0x8, x, y, 0x0) => Ok(Instruction::CopyRegister(x, y)),
                 (0x8, x, y, 0x1) => Ok(Instruction::Or(x, y)),
                 (0x8, x, y, 0x2) => Ok(Instruction::And(x, y)),
                 (0x8, x, y, 0x3) => Ok(Instruction::Xor(x, y)),
@@ -78,7 +78,7 @@ pub mod instructions {
                 (0xD, x, y, n) => Ok(Instruction::Draw(x, y, n)),
                 (0xE, x, 0x9, 0xE) => Ok(Instruction::SkipIfKeyPressed(x)),
                 (0xE, x, 0xA, 0x1) => Ok(Instruction::SkipIfKeyNotPressed(x)),
-                (0xF, x, 0x0, 0x7) => Ok(Instruction::SetRegisterToDelayTimer(x)),
+                (0xF, x, 0x0, 0x7) => Ok(Instruction::StoreDelayTimer(x)),
                 (0xF, x, 0x0, 0xA) => Ok(Instruction::StoreInput(x)),
                 (0xF, x, 0x1, 0x5) => Ok(Instruction::SetDelayTimer(x)),
                 (0xF, x, 0x1, 0x8) => Ok(Instruction::SetSoundTimer(x)),
