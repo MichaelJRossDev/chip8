@@ -1,17 +1,27 @@
 pub mod cpu {
-    use crate::instructions::instructions::Instruction;
+    use crate::{instructions::instructions::Instruction, memory::memory::Memory};
 
     struct Chip8CPU {
         v: [u8; 16],
+        memory: Memory,
         i: u16,
         dt: u8,
         st: u8,
         pc: u16,
         sp: u8, //docs are vague about this one. Might have to be u16
         stack: [u16; 16],
+        display: [[bool; 32]; 64],
     }
 
     impl Chip8CPU {
+        fn get(&self, register: u8) -> u8 {
+            self.v[register as usize]
+        }
+
+        fn get_mutable(&mut self, register: u8) -> &mut u8 {
+            &mut self.v[register as usize]
+        }
+
         fn execute(&mut self, instruction: Instruction) {
             match instruction {
                 Instruction::ClearDisplay => self.clear_display(),
@@ -54,71 +64,111 @@ pub mod cpu {
         }
 
         pub fn clear_display(&mut self) {
-            // TODO: Implement the clear_display functionality
+            self.display = [[false; 32]; 64];
         }
 
         pub fn return_from_subroutine(&mut self) {
-            // TODO: Implement the return_from_subroutine functionality
+            //! The interpreter sets the program counter to the address at the top of the stack, then subtracts 1 from the stack pointer.
+            self.pc = self.stack[self.sp as usize];
+            self.sp -= 1;
         }
 
         pub fn jump(&mut self, addr: u16) {
-            // TODO: Implement the jump functionality
+            //! The interpreter sets the program counter to addr.
+            self.pc = addr;
         }
 
         pub fn call(&mut self, addr: u16) {
-            // TODO: Implement the call functionality
+            //! The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to addr.
+            self.sp += 1;
+            self.stack[self.sp as usize] = addr;
         }
 
         pub fn skip_if_equal(&mut self, vx: u8, byte: u8) {
-            // TODO: Implement the skip_if_equal functionality
+            //! The interpreter compares register Vx to byte, and if they are equal, increments the program counter by 2.
+            if self.get(vx) == byte {
+                self.pc += 2;
+            }
         }
 
         pub fn skip_if_not_equal(&mut self, vx: u8, byte: u8) {
-            // TODO: Implement the skip_if_not_equal functionality
+            //! The interpreter compares register Vx to byte, and if they are not equal, increments the program counter by 2.
+            if self.get(vx) != byte {
+                self.pc += 2;
+            }
         }
 
         pub fn skip_if_registers_equal(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the skip_if_registers_equal functionality
+            //! The interpreter compares register Vx to register Vy, and if they are equal, increments the program counter by 2.
+            if self.get(vx) == self.get(vy) {
+                self.pc += 2;
+            }
         }
 
         pub fn set_register(&mut self, vx: u8, byte: u8) {
-            // TODO: Implement the set_register functionality
+            //! The interpreter puts the value byte into register Vx.
+            *self.get_mutable(vx) = byte;
         }
 
         pub fn add(&mut self, vx: u8, byte: u8) {
-            // TODO: Implement the add functionality
+            //! Adds the value byte to the value of register Vx, then stores the result in Vx.
+            //! If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
+            //! Only the lowest 8 bits of the result are kept, and stored in Vx.
+            let result = self.get(vx) as u16 + byte as u16;
+            *self.get_mutable(vx) = (result & 0xFF) as u8;
+            *self.get_mutable(0xF) = (result > 0xFF) as u8;
         }
 
         pub fn copy_register(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the copy_register functionality
+            //! Stores the value of register Vy in register Vx.
+            *self.get_mutable(vx) = self.get(vy);
         }
 
         pub fn or(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the or functionality
+            //! Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
+            *self.get_mutable(vx) |= self.get(vy);
         }
 
         pub fn and(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the and functionality
+            //! Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+            *self.get_mutable(vx) &= self.get(vy);
         }
 
         pub fn xor(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the xor functionality
+            //! Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+            *self.get_mutable(vx) ^= self.get(vy);
         }
 
         pub fn add_registers(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the add_registers functionality
+            //! The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
+            //! Only the lowest 8 bits of the result are kept, and stored in Vx.
+            let result = self.get(vx) as u16 + self.get(vy) as u16;
+            *self.get_mutable(vx) = (result & 0xFF) as u8;
+            *self.get_mutable(0xF) = (result > 0xFF) as u8;
         }
 
         pub fn subtract(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the subtract functionality
+            //! If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+            let x = self.get(vx);
+            let y = self.get(vy);
+
+            *self.get_mutable(0xF) = (x > y) as u8;
+            *self.get_mutable(vx) -= y;
         }
 
         pub fn shift_right(&mut self, vx: u8) {
-            // TODO: Implement the shift_right functionality
+            //! If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
+            *self.get_mutable(0xF) = self.get(vx) % 2;
+            *self.get_mutable(vx) >>= 1;
         }
 
         pub fn reverse_subtract(&mut self, vx: u8, vy: u8) {
-            // TODO: Implement the reverse_subtract functionality
+            //! If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
+            let x = self.get(vx);
+            let y = self.get(vy);
+
+            *self.get_mutable(0xF) = (y > x) as u8;
+            *self.get_mutable(vx) = y - x;
         }
 
         pub fn shift_left(&mut self, vx: u8) {
